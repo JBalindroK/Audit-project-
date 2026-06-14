@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNAL — AI Content Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Söhne:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #08090B; --surface: #0F1113; --surface2: #161A1D; --surface3: #0B0C0E;
+    --lime: #C8FF3D; --lime-dim: #8FB82B;
+    --text: #ECEEEE; --muted: #5B6166; --border: #1E2226;
+    --amber: #FFB454; --blue: #5EC8FF; --pink: #FF6B9D;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 16px 90px; }
+
+  /* HEADER */
+  .header { text-align: center; margin-bottom: 32px; max-width: 760px; width: 100%; }
+  .logo-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
+  .logo-mark { width: 14px; height: 14px; background: var(--lime); border-radius: 2px; transform: rotate(45deg); animation: markPulse 2.5s ease-in-out infinite; }
+  @keyframes markPulse { 0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(200,255,61,0.4); } 50% { opacity:0.6; box-shadow: 0 0 0 8px rgba(200,255,61,0); } }
+  .logo { font-family: 'JetBrains Mono', monospace; font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 600; letter-spacing: 6px; text-transform: uppercase; }
+  .logo span { color: var(--lime); }
+  .tagline { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+
+  /* MAIN CARD */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; width: 100%; max-width: 760px; overflow: hidden; }
+  .card-header { background: var(--surface3); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .card-title { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .card-status { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--lime); display: flex; align-items: center; gap: 6px; }
+  .card-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lime); }
+
+  /* TABS */
+  .tabs-nav { display: flex; border-bottom: 1px solid var(--border); background: var(--surface3); }
+  .tab-nav-btn { flex: 1; padding: 13px 8px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; letter-spacing: 1.5px; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
+  .tab-nav-btn.active { color: var(--lime); border-bottom-color: var(--lime); }
+  .tab-nav-btn:hover:not(.active) { color: var(--text); }
+  .tab-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .tab-panel { display: none; padding: 28px; }
+  .tab-panel.active { display: block; }
+
+  /* FORM */
+  label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+  .field { margin-bottom: 20px; }
+  input[type="text"], textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.88rem; padding: 12px 14px;
+    outline: none; transition: border-color 0.2s; resize: vertical;
+  }
+  input[type="text"]:focus, textarea:focus { border-color: var(--lime); }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  textarea { min-height: 76px; font-family: 'Inter', sans-serif; line-height: 1.5; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 540px) { .row-2 { grid-template-columns: 1fr; } }
+
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; padding: 8px 14px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.5px; }
+  .pill:hover { border-color: var(--lime-dim); color: var(--text); }
+  .pill.active { border-color: var(--lime); color: var(--lime); background: rgba(200,255,61,0.06); }
+
+  .voice-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; color: var(--muted); font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; padding: 6px 12px; cursor: pointer; transition: all 0.15s; }
+  .chip:hover { border-color: var(--lime-dim); color: var(--text); }
+  .chip.active { border-color: var(--lime); color: var(--lime); background: rgba(200,255,61,0.06); }
+
+  /* BUTTONS */
+  .btn { border: none; border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.3px; padding: 13px 22px; transition: all 0.15s; }
+  .btn-primary { background: var(--lime); color: #08090B; width: 100%; }
+  .btn-primary:hover:not(:disabled) { background: #d4ff5e; }
+  .btn-primary:disabled { background: #2a3018; color: #555; cursor: not-allowed; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 10px 16px; font-size: 0.76rem; }
+  .btn-ghost:hover { border-color: var(--lime-dim); color: var(--text); }
+  .btn-dl { background: rgba(94,200,255,0.08); border: 1px solid rgba(94,200,255,0.3); color: var(--blue); padding: 10px 16px; font-size: 0.76rem; }
+  .btn-dl:hover { background: rgba(94,200,255,0.15); }
+  .btn-amber { background: rgba(255,180,84,0.08); border: 1px solid rgba(255,180,84,0.3); color: var(--amber); padding: 10px 16px; font-size: 0.76rem; }
+  .btn-amber:hover:not(:disabled) { background: rgba(255,180,84,0.15); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+
+  /* STATUS BAR */
+  .status-bar { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface2); border-radius: 4px; border-left: 3px solid var(--lime); margin-bottom: 18px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--muted); min-height: 42px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.pulse { background: var(--lime); animation: blink 0.8s infinite; }
+  .status-dot.done { background: var(--lime); }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+  /* WAVEFORM */
+  .waveform { display: none; align-items: center; justify-content: center; gap: 3px; height: 40px; margin-bottom: 14px; }
+  .waveform.active { display: flex; }
+  .bar { width: 3px; background: var(--lime); border-radius: 2px; animation: wave 1s ease-in-out infinite; }
+  @keyframes wave { 0%,100% { height:4px; opacity:0.3; } 50% { height:28px; opacity:1; } }
+
+  audio { display: none; }
+
+  /* SCRIPT DOC */
+  .script-empty { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--muted); text-align: center; padding: 50px 20px; border: 1px dashed var(--border); border-radius: 4px; line-height: 1.8; }
+
+  .script-meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .info-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--muted); padding: 6px 12px; }
+  .info-pill b { color: var(--lime); font-weight: 600; }
+
+  .script-section { margin-bottom: 22px; }
+  .script-section-title { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: var(--lime); margin-bottom: 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+
+  .hook-box { background: rgba(200,255,61,0.05); border: 1px solid rgba(200,255,61,0.25); border-radius: 4px; padding: 14px 16px; }
+  .hook-text { color: var(--text); font-size: 0.92rem; font-weight: 600; line-height: 1.5; font-family: 'Inter', sans-serif; }
+  .hook-note { font-size: 0.65rem; color: var(--muted); margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
+
+  /* TIMED SCRIPT ROWS */
+  .beat-row {
+    display: grid; grid-template-columns: 58px 1fr; gap: 0; margin-bottom: 6px;
+    border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--surface2);
+  }
+  .beat-tc {
+    background: var(--surface3); color: var(--lime); font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+    padding: 12px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 600; border-right: 1px solid var(--border); text-align: center; line-height: 1.4;
+  }
+  .beat-tc small { color: var(--muted); font-size: 0.55rem; font-weight: 400; }
+  .beat-body { padding: 11px 14px; }
+  .beat-voice { color: var(--text); font-size: 0.84rem; line-height: 1.5; margin-bottom: 6px; font-weight: 500; }
+  .beat-visual { color: var(--muted); font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; line-height: 1.6; }
+  .beat-visual b { color: var(--blue); }
+  .beat-onscreen { display: inline-block; background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.25); border-radius: 3px; color: var(--pink); font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; padding: 2px 8px; margin-top: 6px; }
+
+  .caption-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 13px 15px; margin-bottom: 6px; }
+  .caption-time { font-size: 0.63rem; color: var(--lime); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .caption-text { color: var(--text); font-size: 0.8rem; font-family: 'Inter', sans-serif; line-height: 1.5; }
+  .caption-note { font-size: 0.64rem; color: var(--muted); margin-top: 5px; font-style: italic; font-family: 'JetBrains Mono', monospace; }
+
+  .hashtag-pool { display: flex; gap: 6px; flex-wrap: wrap; }
+  .htag { background: rgba(200,255,61,0.06); border: 1px solid rgba(200,255,61,0.2); border-radius: 3px; color: var(--lime); font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; padding: 4px 9px; }
+
+  .cut-row { display: grid; grid-template-columns: 52px 78px 1fr; gap: 0; margin-bottom: 4px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .cut-tc { background: var(--surface3); color: var(--lime); font-size: 0.65rem; padding: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-family: 'JetBrains Mono', monospace; border-right: 1px solid var(--border); }
+  .cut-type { background: var(--surface2); color: var(--amber); font-size: 0.6rem; padding: 8px; display: flex; align-items: center; border-right: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'JetBrains Mono', monospace; }
+  .cut-desc { background: var(--surface2); color: #bbb; font-size: 0.74rem; padding: 8px 11px; display: flex; align-items: center; font-family: 'Inter', sans-serif; }
+
+  .script-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border); }
+
+  /* STORYBOARD */
+  .sb-grid { display: flex; flex-direction: column; gap: 12px; }
+  .sb-scene { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; display: grid; grid-template-columns: 120px 1fr; }
+  @media (max-width: 480px) { .sb-scene { grid-template-columns: 90px 1fr; } }
+  .sb-preview { position: relative; background: #000; overflow: hidden; aspect-ratio: 9/16; max-height: 190px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .sb-tc { position: absolute; bottom: 5px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.5rem; color: rgba(255,255,255,0.4); z-index: 10; }
+  .sb-anim-label { position: absolute; top: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.5rem; color: var(--lime); letter-spacing: 1px; z-index: 10; }
+  .sb-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: #2a2a2a; text-align: center; padding: 8px; transition: all 0.3s; }
+  .anim-zoom .sb-placeholder { animation: sbZoom 8s ease-in-out infinite alternate; }
+  @keyframes sbZoom { from { transform: scale(1); } to { transform: scale(1.12); } }
+  .anim-pan .sb-placeholder { animation: sbPan 8s ease-in-out infinite alternate; }
+  @keyframes sbPan { from { transform: translateX(0) scale(1.1); } to { transform: translateX(-6%) scale(1.1); } }
+  .anim-flash .sb-placeholder { animation: sbFlash 4s ease-in-out infinite; }
+  @keyframes sbFlash { 0%,100%{opacity:1} 48%{opacity:1} 50%{opacity:0.15} 52%{opacity:1} }
+  .anim-typing .sb-placeholder { animation: sbTyping 3s ease-in-out infinite; }
+  @keyframes sbTyping { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)} }
+
+  .sb-info { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sb-scene-num { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--lime); letter-spacing: 2px; }
+  .sb-narration { font-size: 0.76rem; color: #ccc; line-height: 1.5; font-weight: 500; }
+  .sb-anim-tag { display: inline-block; background: rgba(200,255,61,0.06); border: 1px solid rgba(200,255,61,0.2); border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--lime); padding: 2px 7px; width: fit-content; }
+  .sb-prompt-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--muted); letter-spacing: 1px; margin-top: 4px; }
+  .sb-prompt-text { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--amber); background: rgba(255,180,84,0.05); border: 1px solid rgba(255,180,84,0.15); border-radius: 3px; padding: 8px 10px; line-height: 1.5; cursor: pointer; transition: border-color 0.15s; }
+  .sb-prompt-text:hover { border-color: rgba(255,180,84,0.5); }
+  .sb-copy-note { font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; color: var(--muted); margin-top: 2px; }
+
+  .sb-timeline { background: var(--surface3); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; margin-bottom: 14px; display: flex; gap: 3px; align-items: stretch; overflow-x: auto; }
+  .sb-tl-scene { flex-shrink: 0; height: 30px; border-radius: 3px; background: var(--lime-dim); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; color: #08090B; cursor: pointer; transition: opacity 0.15s; }
+  .sb-tl-scene:hover { opacity: 0.8; }
+  .sb-tl-gap { width: 2px; background: var(--border); flex-shrink: 0; }
+  .tl-label { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--muted); margin-bottom: 8px; letter-spacing: 2px; }
+
+  .sb-capcut-box { background: var(--surface3); border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-top: 16px; }
+  .sb-capcut-title { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--amber); letter-spacing: 2px; margin-bottom: 12px; }
+  .sb-capcut-step { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+  .sb-step-num { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--lime); flex-shrink: 0; width: 18px; }
+  .sb-step-text { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #aaa; line-height: 1.6; }
+
+  /* TIPS */
+  .tips { margin-top: 26px; width: 100%; max-width: 760px; }
+  .tips-title { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+  .tips-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+  .tip { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 14px; }
+  .tip-icon { font-size: 1rem; margin-bottom: 5px; }
+  .tip-text { font-size: 0.71rem; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-row">
+    <div class="logo-mark"></div>
+    <div class="logo">SIGNAL<span>.</span></div>
+  </div>
+  <div class="tagline">AI Content Lab · Script Timé + Voix + Storyboard + Montage</div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">signal_factory_v1</span>
+    <span class="card-status">ready</span>
+  </div>
+
+  <div class="tabs-nav">
+    <button class="tab-nav-btn active" onclick="switchTab('generate')">🎙 Script + Voix</button>
+    <button class="tab-nav-btn" onclick="switchTab('storyboard')" id="storyboardTabBtn">🖼 Storyboard</button>
+    <button class="tab-nav-btn" onclick="switchTab('edit')" id="editTabBtn">✂️ Montage</button>
+  </div>
+
+  <!-- TAB 1: GENERATE -->
+  <div class="tab-panel active" id="tab-generate">
+
+    <div class="field">
+      <label>Sujet / Angle repéré (de toi ou d'un autre compte)</label>
+      <textarea id="topic" placeholder="ex: 3 skills Claude Code qui transforment du code moche en interface pro — j'ai vu ce format faire 40K likes, je veux le même format mais avec mes outils"></textarea>
+      <div class="pill-row" style="margin-top:10px;">
+        <div class="pill" onclick="inspireMe('claude')">🤖 Inspire-moi — sur Claude/IA</div>
+        <div class="pill" onclick="inspireMe('format')">🌍 Inspire-moi — format à adapter</div>
+      </div>
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label>Format</label>
+        <div class="pill-row">
+          <div class="pill active" data-format="top3" onclick="selectPill(this, 'format')">Top 3</div>
+          <div class="pill" data-format="top5" onclick="selectPill(this, 'format')">Top 5</div>
+          <div class="pill" data-format="before-after" onclick="selectPill(this, 'format')">Avant / Après</div>
+          <div class="pill" data-format="pov" onclick="selectPill(this, 'format')">POV / Storytime</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Durée cible</label>
+        <div class="pill-row">
+          <div class="pill" data-duration="30" onclick="selectPill(this, 'duration')">~30s</div>
+          <div class="pill active" data-duration="45" onclick="selectPill(this, 'duration')">~45s</div>
+          <div class="pill" data-duration="60" onclick="selectPill(this, 'duration')">~60s</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Voix</label>
+      <div class="voice-row">
+        <div class="chip active" data-voice="21m00Tcm4TlvDq8ikWAM" data-provider="elevenlabs" onclick="selectVoice(this)">Rachel (EL)</div>
+        <div class="chip" data-voice="ErXwobaYiN019PkySvjV" data-provider="elevenlabs" onclick="selectVoice(this)">Antoni (EL)</div>
+        <div class="chip" data-voice="onwK4e9ZLuTAKqWW03F9" data-provider="elevenlabs" onclick="selectVoice(this)">Daniel (EL)</div>
+        <div class="chip" data-voice="nova" data-provider="openai" onclick="selectVoice(this)">Nova (OpenAI)</div>
+        <div class="chip" data-voice="onyx" data-provider="openai" onclick="selectVoice(this)">Onyx (OpenAI)</div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:14px;">
+      <label style="font-size:0.72rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;">Clé API Anthropic</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." value=""
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.8rem;outline:none;margin-top:6px;"
+        oninput="apiKey=this.value.trim();localStorage.setItem('signal_apikey',apiKey);" />
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;">Stockée dans localStorage — jamais envoyée ailleurs qu'à api.anthropic.com</div>
+    </div>
+
+    <button class="btn btn-primary" id="generateBtn" onclick="startGeneration()">Générer le script complet</button>
+
+    <div class="divider"></div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">En attente. Décris ton sujet et lance la génération.</span>
+    </div>
+
+    <div class="waveform" id="waveform">
+      <div class="bar" style="animation-delay:0s"></div><div class="bar" style="animation-delay:0.1s"></div>
+      <div class="bar" style="animation-delay:0.2s"></div><div class="bar" style="animation-delay:0.3s"></div>
+      <div class="bar" style="animation-delay:0.15s"></div><div class="bar" style="animation-delay:0.25s"></div>
+      <div class="bar" style="animation-delay:0.05s"></div><div class="bar" style="animation-delay:0.35s"></div>
+      <div class="bar" style="animation-delay:0.12s"></div><div class="bar" style="animation-delay:0.22s"></div>
+    </div>
+
+    <audio id="audioPlayer"></audio>
+
+    <div id="scriptContent">
+      <div class="script-empty">⚠ Décris ton sujet ci-dessus, choisis un format,<br>puis génère pour voir le script timé seconde par seconde,<br>les sous-titres, le hook, et les hashtags.</div>
+    </div>
+
+    <div class="script-actions" id="genActions" style="display:none">
+      <button class="btn btn-dl" onclick="downloadAudio()">⬇ MP3 voix off</button>
+      <button class="btn btn-ghost" onclick="playAudio()">▶ Écouter</button>
+      <button class="btn btn-amber" onclick="copyScript()">📋 Copier le script</button>
+    </div>
+
+  </div>
+
+  <!-- TAB 2: STORYBOARD -->
+  <div class="tab-panel" id="tab-storyboard">
+    <div id="sbContent">
+      <div class="script-empty">⚠ Génère un script d'abord dans l'onglet "Script + Voix".</div>
+    </div>
+    <div id="sbActions" style="display:none; gap:8px; flex-wrap:wrap; margin-top:18px; padding-top:18px; border-top:1px solid var(--border);">
+      <button class="btn btn-amber" onclick="copyStoryboard()">📋 Copier prompts images</button>
+      <button class="btn btn-ghost" onclick="generateNewStoryboard()">↺ Régénérer</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: EDIT PLAN -->
+  <div class="tab-panel" id="tab-edit">
+    <div id="editContent">
+      <div class="script-empty">⚠ Génère un script d'abord dans l'onglet "Script + Voix".</div>
+    </div>
+    <div id="editActions" style="display:none; gap:8px; flex-wrap:wrap; margin-top:18px; padding-top:18px; border-top:1px solid var(--border);">
+      <button class="btn btn-amber" onclick="copyEditPlan()">📋 Copier plan de montage</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="tips">
+  <div class="tips-title">Workflow</div>
+  <div class="tips-grid">
+    <div class="tip"><div class="tip-icon">🎯</div><div class="tip-text">Repère un format qui marche sur un autre compte → décris l'angle + colle le sujet, l'IA le réécrit avec TES projets</div></div>
+    <div class="tip"><div class="tip-icon">⏱</div><div class="tip-text">Le script est timé à la seconde : voix off + texte à l'écran + visuel à montrer, synchronisés</div></div>
+    <div class="tip"><div class="tip-icon">🖼</div><div class="tip-text">Storyboard : prompts d'images/screens à capturer pour chaque scène, calés sur le timing</div></div>
+    <div class="tip"><div class="tip-icon">✂️</div><div class="tip-text">Plan de montage CapCut : coupes, textes, transitions, musique — prêt à exécuter</div></div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let selectedFormat = 'top3';
+let selectedDuration = '45';
+let selectedVoice = '21m00Tcm4TlvDq8ikWAM';
+let selectedProvider = 'elevenlabs';
+let currentScript = null;
+let currentStoryboard = null;
+let currentEditPlan = null;
+let audioBlob = null;
+let audioUrl = null;
+let isGenerating = false;
+let apiKey = localStorage.getItem('signal_apikey') || '';
+
+// ─── ROBUST JSON EXTRACTION ────────────────────────────────
+function extractJSON(rawText) {
+  let raw = (rawText || '').trim();
+  // Strip markdown code fences
+  raw = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+  // Try direct parse first
+  try { return JSON.parse(raw); } catch(e) {}
+
+  // Find first { or [ 
+  let start = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '{' || raw[i] === '[') { start = i; break; }
+  }
+  // Find last } or ]
+  let end = -1;
+  for (let i = raw.length - 1; i >= 0; i--) {
+    if (raw[i] === '}' || raw[i] === ']') { end = i; break; }
+  }
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('Aucun JSON trouvé dans la réponse: ' + raw.slice(0, 150));
+  }
+
+  const sliced = raw.substring(start, end + 1);
+  try {
+    return JSON.parse(sliced);
+  } catch(e) {
+    throw new Error('JSON invalide: ' + e.message + ' — extrait: ' + sliced.slice(0, 150));
+  }
+}
+
+async function callClaude(system, userContent, maxTokens) {
+  if (!apiKey) throw new Error('Clé API manquante — entre ta clé Anthropic dans le champ en haut.');
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: maxTokens || 1000,
+        system: system,
+        messages: [
+          { role: "user", content: userContent }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error('Erreur réseau fetch: ' + e.message);
+  }
+
+  const rawBody = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`API error ${res.status}: ${rawBody.slice(0,300)}`);
+  }
+
+  let data;
+  try {
+    data = JSON.parse(rawBody);
+  } catch (e) {
+    throw new Error('Réponse non-JSON de l\'API: ' + rawBody.slice(0,300));
+  }
+
+  if (!data.content || !data.content.length) {
+    throw new Error('content vide. Réponse complète: ' + rawBody.slice(0,400));
+  }
+  const textBlock = data.content.find(b => b.type === 'text');
+  if (!textBlock || !textBlock.text) {
+    throw new Error('Pas de bloc texte. content: ' + JSON.stringify(data.content).slice(0,400));
+  }
+  return extractJSON(textBlock.text);
+}
+
+
+// ─── TAB SWITCH ──────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── PILL / VOICE SELECTORS ────────────────────────────────
+function selectPill(el, group) {
+  const parent = el.parentElement;
+  parent.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  if (group === 'format') selectedFormat = el.dataset.format;
+  if (group === 'duration') selectedDuration = el.dataset.duration;
+}
+
+function selectVoice(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedVoice = el.dataset.voice;
+  selectedProvider = el.dataset.provider || 'elevenlabs';
+}
+
+// ─── STATUS ───────────────────────────────────────────────
+function setStatus(text, state = 'idle') {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot';
+  if (state === 'loading') dot.classList.add('pulse');
+  if (state === 'done') dot.classList.add('done');
+}
+
+// ─── INSPIRE ME ──────────────────────────────────────────
+const CLAUDE_TOPICS = [
+  "Top 3 trucs que Claude peut faire et que 95% des gens ne savent pas (ex: lire un PDF entier et en sortir un tableau Excel, créer une appli complète sans coder, analyser une vidéo frame par frame)",
+  "J'ai demandé à Claude de coder un outil complet en 10 minutes, voici le résultat avant/après",
+  "3 prompts Claude qui changent tout pour automatiser ton business (audit, génération de contenu, analyse de données)",
+  "Top 3 erreurs que tout le monde fait avec Claude et comment les corriger pour 10x de meilleurs résultats",
+  "Claude vient de sortir une fonctionnalité qui remplace 3 outils payants — je te montre laquelle",
+  "POV: tu découvres que Claude peut créer des fichiers Excel, Word et PowerPoint directement — voici ce que ça change",
+  "3 façons d'utiliser Claude pour gagner 5h par semaine sans rien coder",
+  "Le skill Claude que personne n'utilise et qui transforme n'importe quel projet moche en truc qui a l'air pro",
+  "Top 3 prompts pour transformer Claude en assistant business complet (devis, factures, emails, analyse)",
+  "J'ai testé de faire coder Claude pendant 1 semaine non-stop, voici les 3 trucs qui m'ont le plus surpris"
+];
+
+const FORMAT_TOPICS = [
+  "Format 'Top 3 skills qui transforment X en Y' (vu sur un compte tech US à 40K likes) — je veux le même rythme et la même structure mais sur un sujet IA/no-code",
+  "Format 'avant/après' ultra rapide (3 secondes avant, 3 secondes après) — montre une transformation impressionnante faite avec l'IA",
+  "Format 'j'ai laissé l'IA faire X pendant 24h, voici ce qui s'est passé' — storytime avec résultat surprenant à la fin",
+  "Format 'POV: tu viens de découvrir [outil/technique IA] et ta vie professionnelle change' — accroche émotionnelle + démonstration rapide",
+  "Format 'liste rapide avec compteur visuel' (1/3, 2/3, 3/3 affichés à l'écran) sur des outils ou techniques IA peu connus",
+  "Format 'réaction à un outil IA en le testant en direct' — montre ta vraie réaction à la découverte d'une fonctionnalité",
+  "Format 'erreur commune + solution' — montre d'abord le problème que tout le monde a, puis la solution en 1 clic",
+  "Format 'le secret que les pros ne disent pas' — angle mystère/exclusif sur une technique IA simple mais peu connue",
+  "Format 'classement surprenant' — Top 5 dans un ordre inattendu, avec la #1 qui surprend à la fin",
+  "Format 'chronomètre visible à l'écran' — montre une tâche complétée en temps record grâce à l'IA, avec le temps qui défile"
+];
+
+function inspireMe(type) {
+  const bank = type === 'claude' ? CLAUDE_TOPICS : FORMAT_TOPICS;
+  const pick = bank[Math.floor(Math.random() * bank.length)];
+  document.getElementById('topic').value = pick;
+  setStatus('💡 Sujet suggéré — modifie-le si besoin, puis génère.');
+}
+
+
+async function startGeneration() {
+  const topic = document.getElementById('topic').value.trim();
+  if (!topic) { setStatus('⚠ Décris ton sujet d\'abord.'); return; }
+  if (isGenerating) return;
+  isGenerating = true;
+
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('genActions').style.display = 'none';
+  document.getElementById('scriptContent').innerHTML = '<div class="script-empty">⏳ Génération du script...</div>';
+  document.getElementById('sbContent').innerHTML = '<div class="script-empty">⏳ En attente du script...</div>';
+  document.getElementById('editContent').innerHTML = '<div class="script-empty">⏳ En attente du script...</div>';
+  document.getElementById('sbActions').style.display = 'none';
+  document.getElementById('editActions').style.display = 'none';
+  currentScript = null; currentStoryboard = null; currentEditPlan = null;
+  audioBlob = null; audioUrl = null;
+
+  try {
+    setStatus('Génération du script timé...', 'loading');
+    await generateScript(topic);
+    renderScript();
+
+    setStatus('Script prêt. Génération de la voix off...', 'loading');
+    document.getElementById('waveform').classList.add('active');
+    await generateVoice();
+    document.getElementById('waveform').classList.remove('active');
+    renderScript();
+
+    setStatus('Génération du storyboard...', 'loading');
+    await generateStoryboard(topic);
+    renderStoryboard();
+
+    setStatus('Génération du plan de montage...', 'loading');
+    await generateEditPlan(topic);
+    renderEditPlan();
+
+    setStatus(audioUrl ? '✓ Script + voix + storyboard + montage prêts !' : '✓ Script + storyboard + montage prêts. ⚠ Voix échouée (retry possible).', 'done');
+  } catch (e) {
+    setStatus('⚠ ' + e.message);
+    document.getElementById('scriptContent').innerHTML = `<div class="script-empty">⚠ Erreur de génération.<br><br><span style="color:var(--amber)">${e.message}</span><br><br>Réessaie — parfois l'API renvoie un format inattendu, un second essai fonctionne généralement.</div>`;
+    console.error(e);
+  }
+
+  document.getElementById('generateBtn').disabled = false;
+  isGenerating = false;
+}
+
+// ─── SCRIPT GENERATION ─────────────────────────────────────
+async function generateScript(topic) {
+  const formatLabels = {
+    'top3': 'Top 3 (liste de 3 éléments)',
+    'top5': 'Top 5 (liste de 5 éléments)',
+    'before-after': 'Avant / Après (transformation, 1 seul sujet)',
+    'pov': 'POV / Storytime (récit personnel chronologique)'
+  };
+
+  const SYSTEM = `Tu es un scénariste TikTok spécialisé dans le contenu "tech/IA/builder" (créateurs qui montrent leurs projets faits avec l'IA).
+Format: ${formatLabels[selectedFormat]}. Durée cible: ~${selectedDuration}s.
+
+Génère un script TIMÉ seconde par seconde en français, hook fort dès 0:00, rythme rapide.
+Maximum ${selectedDuration <= 30 ? 4 : selectedDuration <= 45 ? 5 : 6} beats.
+
+Réponds UNIQUEMENT avec un JSON brut compact (pas de markdown, pas d'espaces inutiles):
+{"title":"titre court","tiktok_caption":"caption avec CTA, max 100 car","hook_text":"texte plein écran 0:00-0:02","duration_sec":nombre,"beats":[{"tc":"0:00","tc_end":"0:03","voice_over":"texte dit","on_screen_text":"overlay court","visual":"quoi montrer"}],"hashtags":["8 hashtags FR/EN tech"]}
+
+Règles: premier beat = hook le plus fort. Chaque beat 2-6s, somme = duration_sec. voice_over naturel et court. Dernier beat = CTA (commentaire/follow). Ton direct, hype, pas corporate.`;
+
+  try {
+    currentScript = await callClaude(SYSTEM, topic, 1000);
+  } catch (e) {
+    throw new Error('Génération script: ' + e.message);
+  }
+}
+
+// ─── SCRIPT RENDER ──────────────────────────────────────────
+function renderScript() {
+  const container = document.getElementById('scriptContent');
+  const s = currentScript;
+  if (!s) {
+    container.innerHTML = '<div class="script-empty">Erreur de génération du script.</div>';
+    return;
+  }
+
+  let html = '';
+
+  html += `<div class="script-meta-row">
+    <div class="info-pill">⏱ <b>${s.duration_sec || '~' + selectedDuration}s</b></div>
+    <div class="info-pill">📋 <b>${formatLabel(selectedFormat)}</b></div>
+    <div class="info-pill">🎙 <b>${s.beats ? s.beats.length : 0} beats</b></div>
+  </div>`;
+
+  html += `<div class="script-section">
+    <div class="script-section-title">🎣 Hook (0:00 — 0:02)</div>
+    <div class="hook-box">
+      <div class="hook-text">"${s.hook_text || ''}"</div>
+      <div class="hook-note">Texte plein écran avant/au lancement de la voix — gros texte, contraste fort</div>
+    </div>
+  </div>`;
+
+  html += `<div class="script-section">
+    <div class="script-section-title">📱 Caption TikTok</div>
+    <div class="hook-box">
+      <div class="hook-text" style="font-weight:400;color:var(--text)">${s.tiktok_caption || ''}</div>
+    </div>
+  </div>`;
+
+  if (s.beats && s.beats.length) {
+    html += `<div class="script-section"><div class="script-section-title">🎬 Script Timé — Voix + Visuel</div>`;
+    for (const b of s.beats) {
+      html += `<div class="beat-row">
+        <div class="beat-tc">${b.tc}<small>${b.tc_end || ''}</small></div>
+        <div class="beat-body">
+          <div class="beat-voice">"${b.voice_over || ''}"</div>
+          <div class="beat-visual"><b>VISUEL</b> — ${b.visual || ''}</div>
+          ${b.on_screen_text ? `<div class="beat-onscreen">TEXTE ÉCRAN: ${b.on_screen_text}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (s.captions && s.captions.length) {
+    html += `<div class="script-section"><div class="script-section-title">💬 Sous-titres</div>`;
+    for (const cap of s.captions) {
+      html += `<div class="caption-box">
+        <div class="caption-time">${cap.time || ''}</div>
+        <div class="caption-text">${cap.text || ''}</div>
+        ${cap.note ? `<div class="caption-note">${cap.note}</div>` : ''}
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (s.hashtags && s.hashtags.length) {
+    html += `<div class="script-section">
+      <div class="script-section-title"># Hashtags</div>
+      <div class="hashtag-pool">
+        ${s.hashtags.map(h => `<div class="htag">${h.startsWith('#') ? h : '#'+h}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+  document.getElementById('genActions').style.display = 'flex';
+}
+
+function formatLabel(f) {
+  return { 'top3': 'Top 3', 'top5': 'Top 5', 'before-after': 'Avant/Après', 'pov': 'POV' }[f] || f;
+}
+
+// ─── VOICE GENERATION ────────────────────────────────────────
+let puterLoadAttempted = false;
+function loadPuterScript() {
+  if (puterLoadAttempted) return Promise.resolve(typeof puter !== 'undefined');
+  puterLoadAttempted = true;
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.onload = () => resolve(typeof puter !== 'undefined');
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+    setTimeout(() => resolve(typeof puter !== 'undefined'), 6000);
+  });
+}
+
+async function generateVoice() {
+  if (!currentScript || !currentScript.beats) return;
+  const text = currentScript.beats.map(b => b.voice_over).join(' ');
+
+  if (typeof puter === 'undefined') await loadPuterScript();
+  if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2speech) {
+    return; // silently skip — text/script still useful
+  }
+
+  const attempts = selectedProvider === 'elevenlabs'
+    ? [
+        () => puter.ai.txt2speech(text, { voice: selectedVoice, engine: 'elevenlabs' }),
+        () => puter.ai.txt2speech(text, { voice: selectedVoice }),
+        () => puter.ai.txt2speech(text)
+      ]
+    : [
+        () => puter.ai.txt2speech(text, { voice: selectedVoice, engine: 'openai' }),
+        () => puter.ai.txt2speech(text, { voice: selectedVoice }),
+        () => puter.ai.txt2speech(text)
+      ];
+
+  let audioResponse = null;
+  for (const attempt of attempts) {
+    try {
+      audioResponse = await attempt();
+      if (audioResponse) break;
+    } catch (e) { /* try next */ }
+  }
+  if (!audioResponse) return;
+
+  try {
+    let blob;
+    if (audioResponse instanceof Blob) blob = audioResponse;
+    else if (audioResponse instanceof HTMLAudioElement) {
+      const src = audioResponse.src || audioResponse.currentSrc;
+      const r = await fetch(src); blob = await r.blob();
+    } else if (typeof audioResponse === 'string') {
+      const r = await fetch(audioResponse); blob = await r.blob();
+    } else if (audioResponse.url) {
+      const r = await fetch(audioResponse.url); blob = await r.blob();
+    } else if (audioResponse.src) {
+      const r = await fetch(audioResponse.src); blob = await r.blob();
+    } else blob = new Blob([audioResponse], { type: 'audio/mpeg' });
+    audioBlob = blob;
+    audioUrl = URL.createObjectURL(blob);
+    document.getElementById('audioPlayer').src = audioUrl;
+  } catch (e) { /* ignore */ }
+}
+
+function playAudio() {
+  const audio = document.getElementById('audioPlayer');
+  if (audio.src) audio.paused ? audio.play() : audio.pause();
+}
+
+function downloadAudio() {
+  if (!audioBlob) { setStatus('⚠ Voix non disponible — copie le texte et génère sur ElevenLabs directement.'); return; }
+  const url = URL.createObjectURL(audioBlob);
+  const a = document.createElement('a');
+  const title = (currentScript?.title || 'script').replace(/\s+/g, '_').slice(0, 30);
+  a.href = url; a.download = `signal_${title}.mp3`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyScript() {
+  const s = currentScript;
+  if (!s) return;
+  let text = `=== ${s.title || 'SCRIPT'} ===\n\n`;
+  text += `📱 CAPTION: ${s.tiktok_caption}\n\n`;
+  text += `🎣 HOOK (0:00-0:02): "${s.hook_text}"\n\n`;
+  text += `🎬 SCRIPT TIMÉ:\n`;
+  (s.beats||[]).forEach(b => {
+    text += `\n[${b.tc}-${b.tc_end}]\n  VOIX: "${b.voice_over}"\n  ÉCRAN: ${b.on_screen_text}\n  VISUEL: ${b.visual}\n`;
+  });
+  text += `\n💬 SOUS-TITRES:\n`;
+  (s.captions||[]).forEach(c => { text += `  [${c.time}] ${c.text}\n`; });
+  text += `\n# HASHTAGS: ${(s.hashtags||[]).join(' ')}\n`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#genActions .btn-amber');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = '📋 Copier le script', 2000);
+  });
+}
+
+// ─── STORYBOARD GENERATION ────────────────────────────────────
+async function generateStoryboard(topic) {
+  if (!currentScript || !currentScript.beats) return;
+
+  const SYSTEM = `Directeur visuel TikTok tech/IA. Pour chaque beat du script fourni, crée une scène storyboard.
+Réponds en JSON compact: {"scenes":[{"tc_start":"0:00","tc_end":"0:03","narration":"...","anim":"zoom|pan|flash|typing","anim_reason":"courte raison","image_prompt":"capture d'écran précise à faire, ou GÉNÉRÉ: prompt image si visuel généré","capcut_tip":"action CapCut précise"}]}
+Pas de markdown.`;
+
+  const beatsDesc = currentScript.beats.map(b => `[${b.tc}-${b.tc_end}] VOIX: "${b.voice_over}" | VISUEL PRÉVU: ${b.visual}`).join('\n');
+
+  try {
+    currentStoryboard = await callClaude(SYSTEM, `Sujet: ${topic}\n\nScript:\n${beatsDesc}`, 1000);
+  } catch(e) {
+    console.error('Storyboard error', e);
+    currentStoryboard = null;
+  }
+}
+
+function renderStoryboard() {
+  const container = document.getElementById('sbContent');
+  if (!currentStoryboard || !currentStoryboard.scenes) {
+    container.innerHTML = '<div class="script-empty">Storyboard non disponible.</div>';
+    return;
+  }
+
+  const sb = currentStoryboard;
+  const animColors = { zoom:'#1a3a1a', pan:'#1a2a3a', flash:'#3a1a1a', typing:'#2a2a0a' };
+  const animIcons = { zoom:'🔍', pan:'↔️', flash:'⚡', typing:'⌨️' };
+
+  let html = '';
+  html += `<div class="tl-label">TIMELINE — ${sb.scenes.length} SCÈNES</div>`;
+  html += `<div class="sb-timeline">`;
+  sb.scenes.forEach((sc, i) => {
+    const startSec = tcToSec(sc.tc_start);
+    const endSec = tcToSec(sc.tc_end);
+    const dur = Math.max(1, endSec - startSec);
+    const w = Math.max(46, dur * 12);
+    html += `<div class="sb-tl-scene" style="width:${w}px;" title="Scène ${i+1}" onclick="document.getElementById('sb-scene-${i}').scrollIntoView({behavior:'smooth'})">
+      ${animIcons[sc.anim]||''} S${i+1}
+    </div>`;
+    if (i < sb.scenes.length - 1) html += `<div class="sb-tl-gap"></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sb-grid">`;
+  sb.scenes.forEach((sc, i) => {
+    const animClass = `anim-${sc.anim}`;
+    html += `
+    <div class="sb-scene" id="sb-scene-${i}">
+      <div class="sb-preview ${animClass}" onclick="copyPrompt(${i})">
+        <div class="sb-anim-label">${animIcons[sc.anim]||''} ${(sc.anim||'').toUpperCase()}</div>
+        <div class="sb-tc">${sc.tc_start} → ${sc.tc_end}</div>
+        <div class="sb-placeholder" style="background:${animColors[sc.anim]||'#111'}">
+          SCÈNE ${i+1}<br>${(sc.anim||'').toUpperCase()}<br><br>clique pour<br>copier
+        </div>
+      </div>
+      <div class="sb-info">
+        <div class="sb-scene-num">SCÈNE ${i+1} · ${sc.tc_start}–${sc.tc_end}</div>
+        <div class="sb-narration">"${sc.narration || ''}"</div>
+        <div class="sb-anim-tag">${animIcons[sc.anim]||''} ${(sc.anim||'').toUpperCase()} — ${sc.anim_reason||''}</div>
+        <div class="sb-prompt-label">VISUEL À PRÉPARER</div>
+        <div class="sb-prompt-text" onclick="copyPrompt(${i})" title="Cliquer pour copier">${sc.image_prompt||''}</div>
+        <div class="sb-copy-note">↑ clique pour copier</div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sb-capcut-box">
+    <div class="sb-capcut-title">📲 WORKFLOW CAPCUT</div>`;
+  const steps = [
+    'Importe tes captures d\'écran / clips dans l\'ordre des scènes',
+    'Chaque visuel = durée exacte indiquée sur le storyboard',
+    'Applique l\'animation indiquée sur chaque clip (Cadrage = zoom/pan, Effets = flash)',
+    'Colle le MP3 de voix off sur la piste audio, synchronise avec 0:00',
+    'Ajoute les textes à l\'écran (overlays) aux timings du script',
+    'Sous-titres auto (CapCut → Sous-titres → Automatique), ajuste si besoin',
+    'Transition rapide (0.1-0.2s) entre chaque scène : "Flash" ou "Zoom punch"',
+    'Export 1080×1920 (9:16) · 30fps'
+  ];
+  steps.forEach((s, i) => {
+    const tip = sb.scenes[i] ? `<br><span style="color:var(--amber);font-size:0.62rem">→ Scène ${i+1}: ${sb.scenes[i].capcut_tip||''}</span>` : '';
+    html += `<div class="sb-capcut-step"><div class="sb-step-num">${i+1}.</div><div class="sb-step-text">${s}${tip}</div></div>`;
+  });
+  html += `</div>`;
+
+  container.innerHTML = html;
+  document.getElementById('sbActions').style.display = 'flex';
+}
+
+function tcToSec(tc) {
+  if (!tc) return 0;
+  const parts = tc.split(':');
+  return parseInt(parts[0]||0)*60 + parseInt(parts[1]||0);
+}
+
+function copyPrompt(sceneIdx) {
+  if (!currentStoryboard || !currentStoryboard.scenes[sceneIdx]) return;
+  const prompt = currentStoryboard.scenes[sceneIdx].image_prompt;
+  navigator.clipboard.writeText(prompt).then(() => {
+    const els = document.querySelectorAll('.sb-prompt-text');
+    const el = els[sceneIdx];
+    if (el) {
+      el.style.borderColor = '#C8FF3D';
+      el.style.color = '#C8FF3D';
+      setTimeout(() => { el.style.borderColor = ''; el.style.color = ''; }, 1200);
+    }
+  });
+}
+
+function copyStoryboard() {
+  if (!currentStoryboard || !currentStoryboard.scenes) return;
+  let text = `=== STORYBOARD ===\n\n`;
+  currentStoryboard.scenes.forEach((sc, i) => {
+    text += `SCÈNE ${i+1} · ${sc.tc_start}–${sc.tc_end} · ${(sc.anim||'').toUpperCase()}\n`;
+    text += `Narration: "${sc.narration}"\n`;
+    text += `Animation: ${sc.anim} — ${sc.anim_reason}\n`;
+    text += `Visuel: ${sc.image_prompt}\n`;
+    text += `CapCut: ${sc.capcut_tip}\n\n`;
+  });
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#sbActions .btn-amber');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = '📋 Copier prompts images', 2000);
+  });
+}
+
+async function generateNewStoryboard() {
+  const topic = document.getElementById('topic').value.trim();
+  if (!topic || !currentScript) return;
+  document.getElementById('sbContent').innerHTML = '<div class="script-empty">⏳ Régénération...</div>';
+  await generateStoryboard(topic);
+  renderStoryboard();
+}
+
+// ─── EDIT PLAN GENERATION ──────────────────────────────────────
+async function generateEditPlan(topic) {
+  if (!currentScript) return;
+
+  const SYSTEM = `Monteur vidéo TikTok. Génère un plan de montage CapCut pour ce script tech/IA.
+Réponds en JSON compact: {"music_suggestion":"style+tempo, pas de nom d'artiste","color_grade":"réglage couleur recommandé","cuts":[{"tc":"0:00","type":"CUT|TEXT|ZOOM|TRANSITION|SOUND","description":"instruction précise"}],"thumbnail_tip":"comment faire la miniature"}
+Couvre toute la vidéo avec les timecodes fournis. Pas de markdown.`;
+
+  const beatsDesc = currentScript.beats.map(b => `[${b.tc}-${b.tc_end}] "${b.voice_over}" | écran: ${b.on_screen_text}`).join('\n');
+
+  try {
+    currentEditPlan = await callClaude(SYSTEM, `Sujet: ${topic}\n\nScript:\n${beatsDesc}`, 1000);
+  } catch(e) {
+    console.error('Edit plan error', e);
+    currentEditPlan = null;
+  }
+}
+
+function renderEditPlan() {
+  const container = document.getElementById('editContent');
+  if (!currentEditPlan) {
+    container.innerHTML = '<div class="script-empty">Plan de montage non disponible.</div>';
+    return;
+  }
+  const p = currentEditPlan;
+
+  let html = '';
+  html += `<div class="script-meta-row">
+    <div class="info-pill">🎵 <b>${p.music_suggestion || ''}</b></div>
+  </div>`;
+
+  html += `<div class="script-section">
+    <div class="script-section-title">🎨 Color Grade</div>
+    <div class="caption-box"><div class="caption-text">${p.color_grade || ''}</div></div>
+  </div>`;
+
+  if (p.cuts && p.cuts.length) {
+    html += `<div class="script-section"><div class="script-section-title">✂️ Plan de Montage</div>`;
+    for (const cut of p.cuts) {
+      html += `<div class="cut-row">
+        <div class="cut-tc">${cut.tc || ''}</div>
+        <div class="cut-type">${cut.type || ''}</div>
+        <div class="cut-desc">${cut.description || ''}</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  html += `<div class="script-section">
+    <div class="script-section-title">🖼 Miniature</div>
+    <div class="caption-box"><div class="caption-text">${p.thumbnail_tip || ''}</div></div>
+  </div>`;
+
+  container.innerHTML = html;
+  document.getElementById('editActions').style.display = 'flex';
+}
+
+function copyEditPlan() {
+  if (!currentEditPlan) return;
+  const p = currentEditPlan;
+  let text = `=== PLAN DE MONTAGE ===\n\n`;
+  text += `🎵 MUSIQUE: ${p.music_suggestion}\n`;
+  text += `🎨 COLOR GRADE: ${p.color_grade}\n\n`;
+  text += `✂️ COUPES:\n`;
+  (p.cuts||[]).forEach(c => { text += `  [${c.tc}] ${c.type}: ${c.description}\n`; });
+  text += `\n🖼 MINIATURE: ${p.thumbnail_tip}\n`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#editActions .btn-amber');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = '📋 Copier plan de montage', 2000);
+  });
+}
+
+document.getElementById('topic').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) startGeneration();
+});
+
+// Pre-fill API key input from localStorage
+(function() {
+  const inp = document.getElementById('apiKeyInput');
+  if (inp && apiKey) inp.value = apiKey;
+})();
+</script>
+</body>
+</html>
