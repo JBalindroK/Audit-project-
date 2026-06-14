@@ -15,13 +15,15 @@ const C={
 };
 
 function parseEuros(s){
-  var m=(s||"0").match(/[\d]+(?:[.,\d]+)?/);
+  var m=(s||"0").match(/[\d][\d .,]*/);
   if(!m)return 0;
-  var n=m[0];
+  var n=m[0].replace(/[\s.,]+$/,"");
   if(/^\d+\.\d{3}$/.test(n))return parseFloat(n.replace(".",""));
-  if(/^\d{1,3}(\.\d{3})*,\d+$/.test(n))return parseFloat(n.replace(/\./g,"").replace(",","."));
+  if(/^\d{1,3}(\.\d{3})*,\d{1,2}$/.test(n))return parseFloat(n.replace(/\./g,"").replace(",","."));
+  if(/^\d{1,3}(,\d{3})+$/.test(n))return parseFloat(n.replace(/,/g,""));
+  if(/^\d{1,3}( \d{3})+$/.test(n))return parseFloat(n.replace(/ /g,""));
   if(/^\d+\.\d{1,2}$/.test(n))return parseFloat(n);
-  return parseFloat(n.replace(/\./g,"").replace(",","."))||0;
+  return parseFloat(n.replace(/[\s.]/g,"").replace(",","."))||0;
 }
 
 function checkCoherence(parsed){
@@ -104,7 +106,7 @@ const INDEXATIONS={
       {date:"2023-01-01",coef:1.0457,pct:1.31,note:"Indexation jan 2023"},
       {date:"2023-07-01",coef:1.0510,pct:0.52,note:"Indexation juil 2023"},
       {date:"2024-05-01",coef:1.0733,pct:2.12,note:"Indexation mai 2024"},
-      {date:"2026-05-01",coef:1.0733,pct:1.89,note:"Index 1.89% CCT 2023-2024 - au 01/05/2026 - CONFIRME CCT"},
+      {date:"2026-05-01",coef:1.0936,pct:1.89,note:"Index 1.89% CCT 2023-2024 - au 01/05/2026 - CONFIRME CCT"},
     ],
   },
   "111":{
@@ -387,7 +389,7 @@ function makeP1(mode,co,year,yearTo){
     "LOI BELGE: +50% heures sup sem/sam, +100% dim/feries sur TAUX BASE (Loi 1971 art.29)",
     ly?"Prime nuit: "+ly.nuit:"Prime nuit min 1.51euros/h depuis jan 2026",
     ly?"Formation: "+ly.f:"Formation: 5j/an depuis 01/01/2024",
-    "Prescription: 5 ans (Loi 1978)",cp.legal,
+    "Prescription: 5 ans (Loi 1978)",co.typeEntreprise==="interim"?"CP 322 INTERIM: taux variable selon qualification du poste. Heures sup calculees sur TAUX REEL du poste occupe. Prescription par periode de paie (pas de cumul 5 ans).":cp.legal,
     co.grille?"=== GRILLE SALARIALE ENTREPRISE ===":"",
     co.grille?(function(){var lines=[];(co.grille.categories||[]).forEach(function(cat){lines.push(cat.label+": base "+cat.tauxBase+" euros/h");});var pe=co.grille.primesEquipe||{};if(pe.nuitSem)lines.push("Primes: nuit-sem x"+pe.nuitSem+" | nuit-WE x"+pe.nuitWE+" | matin x"+pe.matin);return lines.join(" / ");})():"",
     co.grille&&co.grille.heuresMois?(function(){var hm=co.grille.heuresMois;var lines=["Heures types/mois:"];if(hm.c5)lines.push("Continu: "+hm.c5.nuitSem+"h nuit-sem "+hm.c5.nuitWE+"h nuit-WE "+hm.c5.dim+"h dim "+hm.c5.feries+"h feries "+hm.c5.heuresSup+"h sup");if(hm.sc)lines.push("Semi-cont: "+hm.sc.nuitSem+"h nuit-sem "+hm.sc.dim+"h dim");if(hm.j)lines.push("Journee: "+hm.j.feries+"h feries "+hm.j.heuresSup+"h sup");return lines.join(" / ");})():"",
@@ -442,9 +444,14 @@ function makeP2(mode,co,year){
     +'"points_conformes":[""],"recommandations":[""],"note_contexte":""}';
 }
 
-function callAPI(system,userMsg){
+function callAPI(system,userMsg,apiKey){
   return fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",headers:{"Content-Type":"application/json"},
+    method:"POST",headers:{
+      "Content-Type":"application/json",
+      "x-api-key":apiKey||"",
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true"
+    },
     body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1800,system:system,messages:[{role:"user",content:userMsg}]})
   }).then(function(r){return r.json();}).then(function(d){
     if(d.error)throw new Error(d.error.message||"API error");
@@ -452,14 +459,15 @@ function callAPI(system,userMsg){
   });
 }
 
-function analyzeSingle(b64,fname,mode,co,year,yearTo){
+function analyzeSingle(b64,fname,mode,co,year,yearTo,apiKey){
   var sys1=makeP1(mode,co,year,yearTo);
   var msg1=b64?[{type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},{type:"text",text:"Analyse cette fiche en 4 etapes avec calculs."}]:"Analyse cette fiche fictive:\n\n"+(MOCK[mode]||MOCK.retro);
-  return callAPI(sys1,msg1).then(function(reasoning){
+  return callAPI(sys1,msg1,apiKey).then(function(reasoning){
     var rShort=reasoning.length>3000?reasoning.slice(0,3000)+"...":reasoning;
-    return callAPI(makeP2(mode,co,year),"JSON uniquement base sur:\n\n"+rShort).then(function(txt){
+    return callAPI(makeP2(mode,co,year),"JSON uniquement base sur:\n\n"+rShort,apiKey).then(function(txt){
       var js=txt.indexOf("{");var je=txt.lastIndexOf("}");
-      var parsed=JSON.parse(js>=0?txt.slice(js,je+1):txt.trim());
+      if(js<0||je<0||je<js)throw new Error("Réponse API invalide — JSON attendu");
+      var parsed=JSON.parse(txt.slice(js,je+1));
       parsed._reasoning=reasoning;
       parsed._year=(parsed.periode_paie&&parsed.periode_paie.annee&&!isNaN(parseInt(parsed.periode_paie.annee)))?parseInt(parsed.periode_paie.annee):year;
       parsed._month=parsed.periode_paie&&parsed.periode_paie.mois?parsed.periode_paie.mois:"";
@@ -489,7 +497,7 @@ function runAnalysis(opts){
   var demoFiches=opts.demoFiches,year=opts.year,yearTo=opts.yearTo,mode=opts.mode,co=opts.co;
   var batchMode=opts.batchMode,batchFiles=opts.batchFiles,fileB64=opts.fileB64,file=opts.file;
   var setStep=opts.setStep,setResult=opts.setResult,setError=opts.setError,setBatchProg=opts.setBatchProg;
-  var setRetro=opts.setRetro,setPrev=opts.setPrev;
+  var setRetro=opts.setRetro,setPrev=opts.setPrev,apiKey=opts.apiKey;
   var sv=function(p){saveResult(p,mode,setRetro,setPrev);};
 
   if(demoFiches.length>0){
@@ -521,11 +529,12 @@ function runAnalysis(opts){
     var nextBatch=function(){
       if(bi>=files.length)return;
       var i=bi++;
-      analyzeSingle(files[i].b64,files[i].name,mode,co,year,yearTo).then(function(r){
+      analyzeSingle(files[i].b64,files[i].name,mode,co,year,yearTo,apiKey).then(function(r){
         sv(r);setBatchProg(function(p){return{current:i+1,total:files.length,results:p.results.concat([r]),done:i===files.length-1};});
         nextBatch();
-      }).catch(function(){
-        setBatchProg(function(p){return{current:i+1,total:files.length,results:p.results,done:i===files.length-1};});
+      }).catch(function(e){
+        var errResult={_filename:files[i].name,_error:true,conformite_globale:"ERREUR",score:0,passif_par_travailleur:[],alertes:[],_errorMessage:e&&e.message?e.message:"Erreur inconnue"};
+        setBatchProg(function(p){return{current:i+1,total:files.length,results:p.results.concat([errResult]),done:i===files.length-1};});
         nextBatch();
       });
     };
@@ -533,7 +542,7 @@ function runAnalysis(opts){
     return;
   }
 
-  analyzeSingle(files[0].b64,files[0].name,mode,co,year,yearTo).then(function(parsed){
+  analyzeSingle(files[0].b64,files[0].name,mode,co,year,yearTo,apiKey).then(function(parsed){
     setResult(parsed);sv(parsed);setStep("result");
   }).catch(function(e){
     setError("Erreur: "+(e&&e.message?e.message:"Reessayez."));setStep("upload");
@@ -598,6 +607,7 @@ export default function App(){
   var ref=useRef();
   var s21=useState("general");var configTab=s21[0];var setConfigTab=s21[1];
   var s19=useState(null);var selEntry=s19[0];var setSelEntry=s19[1];
+  var s22=useState("");var apiKey=s22[0];var setApiKey=s22[1];
   var cp=CP[co.cp]||CP["autre"];
   var W=parseInt(co.workers)||0;
 
@@ -613,10 +623,15 @@ export default function App(){
   };
   var analyze=function(){
     setStep("analyzing");setError(null);
-    runAnalysis({demoFiches:demoFiches,year:year,mode:mode,co:co,batchMode:batchMode,batchFiles:batchFiles,fileB64:fileB64,file:file,setStep:setStep,setResult:setResult,setError:setError,setBatchProg:setBatchProg,setRetro:setRetro,setPrev:setPrev});
+    runAnalysis({demoFiches:demoFiches,year:year,yearTo:yearTo,mode:mode,co:co,batchMode:batchMode,batchFiles:batchFiles,fileB64:fileB64,file:file,setStep:setStep,setResult:setResult,setError:setError,setBatchProg:setBatchProg,setRetro:setRetro,setPrev:setPrev,apiKey:apiKey});
   };
 
-  var retroTotal=retro.reduce(function(s,r){return s+(r.passif_par_travailleur||[]).reduce(function(s2,p){return s2+parseEuros(p.montant_total_5ans);},0);},0);
+  var isInterimCo=(co.typeEntreprise||"direct")==="interim";
+  var retroTotal=retro.filter(function(r){
+    if(r._type==="interim"&&!isInterimCo)return false;
+    if(r._type==="direct"&&isInterimCo)return false;
+    return true;
+  }).reduce(function(s,r){return s+(r.passif_par_travailleur||[]).reduce(function(s2,p){return s2+parseEuros(p.montant_total_5ans);},0);},0);
   var appStyle={minHeight:"100vh",background:C.g100,fontFamily:"Inter,sans-serif"};
 
   if(dash)return <div style={appStyle}>
@@ -690,9 +705,12 @@ export default function App(){
                   {r.alertes.map(function(a,j){
                     var atc=a.type==="CRITIQUE"?C.danger:C.warn;
                     var abg=a.type==="CRITIQUE"?C.dangerL:C.warnL;
+                    var ncol=a.niveau==="LOI"?"#2C4A6E":a.niveau==="CP"?"#8B4513":"#1A5C1A";
+                    var nbg=a.niveau==="LOI"?"#E8F0FF":a.niveau==="CP"?"#FFF0E8":"#F0FFE8";
                     return <div key={j} style={{borderLeft:"3px solid "+atc,paddingLeft:10,marginBottom:7}}>
                       <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
                         <span style={{padding:"2px 6px",borderRadius:3,fontSize:10,fontWeight:700,background:abg,color:atc}}>{a.type}</span>
+                        {a.niveau&&<span style={{padding:"2px 6px",borderRadius:3,fontSize:9,fontWeight:700,background:nbg,color:ncol}}>{a.niveau}</span>}
                         <span style={{fontSize:12,fontWeight:600,color:C.navy}}>{a.titre}</span>
                         {a.montant_estime&&a.montant_estime!=="-"&&<span style={{marginLeft:"auto",color:C.danger,fontWeight:700,fontSize:12}}>{a.montant_estime}</span>}
                       </div>
@@ -772,9 +790,12 @@ export default function App(){
                   {r.alertes.map(function(a,j){
                     var atc=a.type==="CRITIQUE"?C.danger:C.warn;
                     var abg=a.type==="CRITIQUE"?C.dangerL:C.warnL;
+                    var ncol=a.niveau==="LOI"?"#2C4A6E":a.niveau==="CP"?"#8B4513":"#1A5C1A";
+                    var nbg=a.niveau==="LOI"?"#E8F0FF":a.niveau==="CP"?"#FFF0E8":"#F0FFE8";
                     return <div key={j} style={{borderLeft:"3px solid "+atc,paddingLeft:10,marginBottom:7}}>
                       <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
                         <span style={{padding:"2px 6px",borderRadius:3,fontSize:10,fontWeight:700,background:abg,color:atc}}>{a.type}</span>
+                        {a.niveau&&<span style={{padding:"2px 6px",borderRadius:3,fontSize:9,fontWeight:700,background:nbg,color:ncol}}>{a.niveau}</span>}
                         <span style={{fontSize:12,fontWeight:600,color:C.navy}}>{a.titre}</span>
                       </div>
                       <div style={{fontSize:11,color:C.g700}}>{a.detail}</div>
@@ -908,10 +929,17 @@ export default function App(){
                 style={{width:60,padding:"5px 8px",border:"1px solid "+C.g300,borderRadius:6,fontSize:13,fontWeight:700,textAlign:"center",fontFamily:"inherit"}}/>
               <span style={{fontSize:11,color:C.g500}}>ETP</span>
             </div>;})}</div>
-          {configTab==="general"&&<button onClick={saveConf} disabled={!edit.name||!edit.workers||!edit.cp||edit.country!=="BE"}
-            style={{width:"100%",background:edit.name&&edit.workers&&edit.cp&&edit.country==="BE"?C.accent:C.g300,color:edit.name&&edit.workers&&edit.cp&&edit.country==="BE"?C.navy:C.g500,border:"none",borderRadius:8,padding:"13px",fontWeight:800,fontSize:14,cursor:"pointer"}}>
-            Confirmer et demarrer l audit →
-          </button>}
+          {configTab==="general"&&<div>
+            <div style={{marginBottom:14}}>
+              <label style={lblS}>Clé API Anthropic *</label>
+              <input type="password" style={inpS} value={apiKey} onChange={function(e){setApiKey(e.target.value);}} placeholder="sk-ant-..."/>
+              <div style={{fontSize:10,color:C.g500,marginTop:3}}>Requise pour l'analyse de vrais PDF. Conservée localement dans le navigateur uniquement.</div>
+            </div>
+            <button onClick={saveConf} disabled={!edit.name||!edit.workers||!edit.cp||edit.country!=="BE"}
+              style={{width:"100%",background:edit.name&&edit.workers&&edit.cp&&edit.country==="BE"?C.accent:C.g300,color:edit.name&&edit.workers&&edit.cp&&edit.country==="BE"?C.navy:C.g500,border:"none",borderRadius:8,padding:"13px",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+              Confirmer et demarrer l audit →
+            </button>
+          </div>}
           {configTab==="grille"&&<div>
             <div style={{color:C.g500,fontSize:11,marginBottom:10}}>Taux de base par categorie. L'IA les utilisera pour calculer le salaire du exact vs paye.</div>
             <div style={{display:"flex",alignItems:"center",gap:12,background:C.g100,borderRadius:8,padding:"10px 14px",marginBottom:12,border:"1px solid "+C.g200}}>
@@ -1188,9 +1216,9 @@ export default function App(){
             <div style={{color:C.g300,fontSize:10,fontWeight:700}}>Statut</div>
           </div>
           {batchProg.results.map(function(r,i){
-            var bc=r.conformite_globale==="NON CONFORME"?{bg:C.dangerL,c:C.danger}:r.conformite_globale==="RISQUE MODERE"?{bg:C.warnL,c:C.warn}:{bg:C.okL,c:C.ok};
+            var bc=r._error?{bg:C.g200,c:C.g500}:r.conformite_globale==="NON CONFORME"?{bg:C.dangerL,c:C.danger}:r.conformite_globale==="RISQUE MODERE"?{bg:C.warnL,c:C.warn}:{bg:C.okL,c:C.ok};
             return <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 80px 130px",padding:"10px 14px",background:i%2===0?C.white:C.g100,borderBottom:"1px solid "+C.g200}}>
-              <div style={{fontSize:12,color:C.g700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r._filename||("Fiche "+(i+1))}</div>
+              <div style={{fontSize:12,color:C.g700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r._filename||("Fiche "+(i+1))}{r._error&&<span style={{color:C.g500,fontSize:10,marginLeft:6}}>— {r._errorMessage||"erreur"}</span>}</div>
               <div style={{fontSize:13,fontWeight:800,color:scoreC(r.score)}}>{r.score}/100</div>
               <span style={{padding:"2px 7px",borderRadius:3,fontSize:10,fontWeight:700,background:bc.bg,color:bc.c,height:"fit-content"}}>{r.conformite_globale}</span>
             </div>;
